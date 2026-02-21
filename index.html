@@ -422,6 +422,37 @@ function loadDB() {
 function saveDB() { localStorage.setItem('ironlog3', JSON.stringify(db)); }
 
 // ═══════════════════════════════════════════════════
+// AUTO-SAVE CURRENT WORKOUT (prevents data loss on refresh)
+// ═══════════════════════════════════════════════════
+function saveCurrentWorkout() {
+  if (currentWorkout.length > 0) {
+    localStorage.setItem('ironlog_current_workout', JSON.stringify({
+      split: currentSplit,
+      workout: currentWorkout,
+      startTime: workoutStartTime,
+      savedAt: Date.now()
+    }));
+  } else {
+    localStorage.removeItem('ironlog_current_workout');
+  }
+}
+function loadCurrentWorkout() {
+  try {
+    var saved = JSON.parse(localStorage.getItem('ironlog_current_workout') || 'null');
+    if (saved && saved.workout && saved.workout.length > 0) {
+      // Only restore if saved within last 24 hours
+      if (Date.now() - saved.savedAt < 86400000) {
+        return saved;
+      }
+    }
+  } catch(e) {}
+  return null;
+}
+function clearCurrentWorkout() {
+  localStorage.removeItem('ironlog_current_workout');
+}
+
+// ═══════════════════════════════════════════════════
 // TIMER
 // ═══════════════════════════════════════════════════
 
@@ -651,11 +682,13 @@ function updateCardio(ei, field, val) {
   currentWorkout[ei].cardio[field] = val ? Number(val) : '';
   var paceEl = document.getElementById('pace-' + ei);
   if (paceEl) paceEl.textContent = calcPace(currentWorkout[ei].cardio);
+  saveCurrentWorkout();
 }
 
 function toggleCardioDone(ei) {
   if (!currentWorkout[ei].cardio) currentWorkout[ei].cardio = {};
   currentWorkout[ei].cardio.done = !currentWorkout[ei].cardio.done;
+  saveCurrentWorkout();
   renderWorkout();
 }
 
@@ -671,27 +704,32 @@ function addExercise(name) {
   }
   closePicker();
   if (!workoutStartTime) startTimer();
+  saveCurrentWorkout();
   renderWorkout();
 }
 
 function removeExercise(ei) {
   if (confirm('Remove ' + currentWorkout[ei].name + '?')) {
     currentWorkout.splice(ei, 1);
+    saveCurrentWorkout();
     renderWorkout();
   }
 }
 
 function addSet(ei) {
   currentWorkout[ei].sets.push({weight:'',reps:'',done:false});
+  saveCurrentWorkout();
   renderWorkout();
 }
 function removeSet(ei) {
   currentWorkout[ei].sets.pop();
+  saveCurrentWorkout();
   renderWorkout();
 }
 
 function updateSet(ei, si, field, val) {
   currentWorkout[ei].sets[si][field] = val ? Number(val) : '';
+  saveCurrentWorkout();
 }
 
 function toggleDone(ei, si) {
@@ -704,6 +742,7 @@ function toggleDone(ei, si) {
     }
   }
   s.done = !s.done;
+  saveCurrentWorkout();
   renderWorkout();
 }
 
@@ -737,6 +776,7 @@ function finishWorkout() {
   
   db.workouts.push(workout);
   saveDB();
+  clearCurrentWorkout();
   
   var splitName = currentSplit.toUpperCase();
   currentWorkout = [];
@@ -1106,6 +1146,37 @@ function drawWeightChart(log) {
 // ═══════════════════════════════════════════════════
 
 updateSplitDates();
+
+// Restore in-progress workout if page was refreshed
+document.addEventListener('DOMContentLoaded', function() {
+  var saved = loadCurrentWorkout();
+  if (saved && saved.workout.length > 0) {
+    currentSplit = saved.split;
+    currentWorkout = saved.workout;
+    workoutStartTime = saved.startTime;
+    
+    // Restore UI state
+    document.querySelectorAll('.split-btn').forEach(function(b) { b.classList.remove('active'); });
+    var splitBtn = document.getElementById('split-' + currentSplit);
+    if (splitBtn) splitBtn.classList.add('active');
+    document.getElementById('no-split').style.display = 'none';
+    document.getElementById('add-exercise-btn').classList.remove('hidden');
+    
+    // Restart timer if workout was in progress
+    if (workoutStartTime) {
+      document.getElementById('timer-bar').classList.remove('hidden');
+      timerInterval = setInterval(updateTimer, 1000);
+    }
+    
+    renderWorkout();
+    switchTab('workout');
+    
+    // Notify user
+    setTimeout(function() {
+      alert('💪 Restored your ' + currentSplit.toUpperCase() + ' workout! Keep going.');
+    }, 500);
+  }
+});
 
 document.getElementById('exercise-options').addEventListener('click', function(e) {
   var pick = e.target.closest('[data-exercise]');
