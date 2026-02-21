@@ -106,15 +106,11 @@ body {
 }
 .add-btn:active { background: #f2f2f7; }
 
-/* Add Exercise button in workout view - fixed above Finish button */
+/* Add Exercise button - inline at bottom of exercise list */
 #add-exercise-btn {
-  position: fixed;
-  bottom: 160px;
-  left: 20px;
-  right: 20px;
-  width: auto;
-  z-index: 48;
-  margin-top: 0;
+  position: relative;
+  margin: 20px 0 100px 0;
+  width: 100%;
 }
 .hidden { display: none !important; }
 
@@ -282,9 +278,9 @@ body {
 .section-title { font-size: 13px; font-weight: 700; color: #aeaeb2; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 10px; }
 
 /* ─── Workout View Padding ─── */
-/* Add bottom padding so last exercise isn't hidden behind fixed buttons */
+/* Add bottom padding so content isn't hidden behind fixed Finish button */
 #workout-view .view-content {
-  padding-bottom: 240px;
+  padding-bottom: 140px;
 }
 </style>
 </head>
